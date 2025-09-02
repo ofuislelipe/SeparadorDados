@@ -27,13 +27,13 @@ def normalize_columns(df):
 def get_folder_canal(row):
     """Regra para CANAL, PROSPECT_ESTADO, CLIENTE_CIDADE e CLIENTE_CEP"""
     tipo = str(row.get('tipo_de_origem', '')).strip().lower()
-    return 'Central' if tipo in ['cliente', 'canal_telefone', 'web'] else 'Cesar'
+    return 'Central' if tipo in ['cliente', 'canal_telefone', 'web'] else 'Bruno Vanderlei'
 
 def get_folder_data_criacao(row):
     """Regra para DATA_HORA_CRIACAO"""
     canal_val = str(row.get('canal', '')).strip().lower()
     if canal_val == 'ouvidoria_caixa':
-        return 'Cesar'
+        return 'Bruno Vanderlei'
     elif canal_val == 'consumidor.gov':
         return 'Central'
     elif canal_val == 'canal_de_denúncias':
