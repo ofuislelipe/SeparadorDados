@@ -9,7 +9,7 @@ from unidecode import unidecode
 st.title("Processamento Automático de Arquivos CSV")
 
 # ============================================================================
-#                       FUNÇÕES DE REGRAS COMPLETAS
+#                            FUNÇÕES DE REGRAS COMPLETAS
 # ============================================================================
 
 def normalize_columns(df):
@@ -62,7 +62,7 @@ def get_folder_prazo_regulamentar(row, mapping):
     return 'Bruno Vanderlei' if tipo == 'procon_audiência' else get_folder_proprietario(row, mapping)
 
 # ============================================================================
-#                       FUNÇÕES DE SUPORTE
+#                            FUNÇÕES DE SUPORTE
 # ============================================================================
 
 def detect_file_type(file_name):
@@ -72,7 +72,7 @@ def detect_file_type(file_name):
         'canal': r'(16 -|38 -|39 -|43 - |05 -)',
         'diretoria': r'18 -',
         'data_criacao': r'22 -',
-        'proprietario': r'(26 -|28 -|34 -|36 -)',
+        'proprietario': r'(26 -|28 -|34 -|36 -|35 -)', # <-- MUDANÇA AQUI
         'prazo_regulamentar': r'27 -'
     }
     
@@ -101,7 +101,7 @@ def apply_rule(file_type, row, mapping):
         return f'Erro: {str(e)}'
 
 # ============================================================================
-#                       INTERFACE E PROCESSAMENTO
+#                            INTERFACE E PROCESSAMENTO
 # ============================================================================
 
 # 1. Upload do mapeamento
@@ -197,7 +197,7 @@ if st.button("Processar Todos os Arquivos") and all_files:
             
             # Registrar problemas
             if 'Proprietario_Nao_Encontrado' in df['destino'].values:
-                missing = df[df['destino'] == 'Proprietario_Nao_Encontrado']
+                missing = df[df['destino'] == 'Proprietariamente_Nao_Encontrado']
                 missing_proprietarios.update(missing['proprietario_nome_completo'].unique())
                 st.warning(f"⚠️ {file_name}: {len(missing)} registros não mapeados")
 
