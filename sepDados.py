@@ -30,7 +30,7 @@ def get_folder_canal(row):
     return 'Central' if tipo in ['cliente', 'canal_telefone', 'web'] else 'Bruno Vanderlei'
 
 def get_folder_data_criacao(row):
-    """Regra para DATA_HORA_CRIACAO"""
+    """Regra para DATA_HORA_CRIACAO (Usada pela Regra Diretoria)"""
     canal_val = str(row.get('canal', '')).strip().lower()
     if canal_val == 'ouvidoria_caixa':
         return 'Bruno Vanderlei'
@@ -56,6 +56,21 @@ def get_folder_proprietario(row, mapping):
             return escritorio
     return 'Proprietario_Nao_Encontrado'
 
+# --- MUDANÇA (2/4): ADICIONADA NOVA FUNÇÃO PARA REGRA 'CRIADO POR' ---
+def get_folder_criado_por(row, mapping):
+    """Regra para 'Criado Por' (Arquivo 22) baseada no mapeamento"""
+    # Usa a coluna 'criado_por_nome_completo'
+    raw_name = str(row.get('criado_por_nome_completo', '')).strip()
+    normalized_name = unidecode(raw_name).lower().strip()
+    
+    # Reutiliza o mesmo 'prop_mapping' (o arquivo proprietarios.csv)
+    for mapped_name, escritorio in mapping.items():
+        if unidecode(mapped_name).lower().strip() == normalized_name:
+            return escritorio
+    # Retorna o mesmo erro para ser pego pelo log de proprietários
+    return 'Proprietario_Nao_Encontrado'
+# --------------------------------------------------------------------
+
 def get_folder_prazo_regulamentar(row, mapping):
     """Regra especial para PRAZO_REGULAMENTAR"""
     tipo = str(row.get('tipo_de_origem', '')).strip().lower()
@@ -71,9 +86,10 @@ def detect_file_type(file_name):
         'time_de_dados': r'(10 -|11 -|12 -|20 -|14 -|15 -|29 -|41)',
         'canal': r'(16 -|38 -|39 -|43 - |05 -)',
         'diretoria': r'18 -',
-        'data_criacao': r'22 -',
-        'proprietario': r'(26 -|28 -|34 -|36 -|35 -)', # <-- MUDANÇA AQUI
-        'prazo_regulamentar': r'27 -'
+        # 'data_criacao': r'22 -', # <-- Linha antiga removida
+        'proprietario': r'(26 -|28 -|34 -|36 -|35 -)',
+        'prazo_regulamentar': r'27 -',
+        'criado_por': r'22 -' # --- MUDANÇA (1/4): Arquivo 22 agora é 'criado_por' ---
     }
     
     for key, pattern in patterns.items():
@@ -91,9 +107,16 @@ def apply_rule(file_type, row, mapping):
         elif file_type == 'diretoria':
             return get_folder_diretoria(row)
         elif file_type == 'data_criacao':
+            # Esta regra ainda existe para o caso 'diretoria' (arquivo 18)
             return get_folder_data_criacao(row)
         elif file_type == 'proprietario':
             return get_folder_proprietario(row, mapping)
+        
+        # --- MUDANÇA (3/4): ADICIONADA NOVA CONDIÇÃO 'criado_por' ---
+        elif file_type == 'criado_por':
+            return get_folder_criado_por(row, mapping)
+        # -----------------------------------------------------------
+            
         elif file_type == 'prazo_regulamentar':
             return get_folder_prazo_regulamentar(row, mapping)
         return 'NaoClassificado'
@@ -162,8 +185,9 @@ if st.button("Processar Todos os Arquivos") and all_files:
         'proprietario': ['proprietario_nome_completo'],
         'prazo_regulamentar': ['proprietario_nome_completo', 'tipo_de_origem'],
         'canal': ['tipo_de_origem'],
-        'data_criacao': ['canal', 'tipo_de_origem'],
-        'diretoria': ['tipo_de_origem']
+        'data_criacao': ['canal', 'tipo_de_origem'], # (Mantido para a regra 'diretoria')
+        'diretoria': ['tipo_de_origem'],
+        'criado_por': ['criado_por_nome_completo'] # --- MUDANÇA (4/4): Coluna obrigatória adicionada ---
     }
     
     for file_obj in all_files:
@@ -187,6 +211,7 @@ if st.button("Processar Todos os Arquivos") and all_files:
             if file_type in required_columns_map:
                 missing = [col for col in required_columns_map[file_type] if col not in df.columns]
                 if missing:
+                    # Agora o erro será "Colunas obrigatórias faltando: ['criado_por_nome_completo']"
                     raise ValueError(f"Colunas obrigatórias faltando: {missing}")
 
             # Aplicar regras
@@ -197,9 +222,15 @@ if st.button("Processar Todos os Arquivos") and all_files:
             
             # Registrar problemas
             if 'Proprietario_Nao_Encontrado' in df['destino'].values:
-                missing = df[df['destino'] == 'Proprietariamente_Nao_Encontrado']
-                missing_proprietarios.update(missing['proprietario_nome_completo'].unique())
-                st.warning(f"⚠️ {file_name}: {len(missing)} registros não mapeados")
+                # Se a regra 'criado_por' falhar, ela também cairá aqui
+                if file_type == 'proprietario' or file_type == 'prazo_regulamentar':
+                    missing_df = df[df['destino'] == 'Proprietario_Nao_Encontrado']
+                    missing_proprietarios.update(missing_df['proprietario_nome_completo'].unique())
+                elif file_type == 'criado_por':
+                    missing_df = df[df['destino'] == 'Proprietario_Nao_Encontrado']
+                    missing_proprietarios.update(missing_df['criado_por_nome_completo'].unique())
+                
+                st.warning(f"⚠️ {file_name}: {len(missing_df)} registros não mapeados")
 
             # Salvar resultados
             for destino, group in df.groupby("destino"):
@@ -218,7 +249,7 @@ if st.button("Processar Todos os Arquivos") and all_files:
     if output_files:
         # Adicionar log de problemas
         if missing_proprietarios:
-            log_content = "Proprietários não encontrados:\n" + "\n".join(sorted(missing_proprietarios))
+            log_content = "Proprietários/Criados Por não encontrados:\n" + "\n".join(sorted(missing_proprietarios))
             output_files['Proprietario_Nao_Encontrado/log_proprietarios.txt'] = log_content
         
         zip_buffer = io.BytesIO()
