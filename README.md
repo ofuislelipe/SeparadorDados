@@ -20,8 +20,8 @@ Este projeto em **Streamlit** automatiza o processamento e classificação de ar
 ### Regras implementadas:
 
 - `time_de_dados`: Arquivos do time de dados (identificados por prefixos como `10 -`, `11 -`, etc.)
-- `canal`: Usa a coluna `tipo_de_origem` para definir se vai para `Central` ou `Cesar`
-- `data_criacao`: Usa `canal` e `tipo_de_origem` para decidir entre `Cesar`, `Central`, ou `Brenda`
+- `canal`: Usa a coluna `tipo_de_origem` para definir se vai para `Central` ou `Bruno Vanderlei`
+- `data_criacao`: Usa `canal` e `tipo_de_origem` para decidir entre `Bruno Vanderlei`, `Central`, ou `Ouvidoria`
 - `diretoria`: Mesma regra da `data_criacao`
 - `proprietario`: Baseado em mapeamento do nome completo do proprietário
 - `prazo_regulamentar`: Usa `tipo_de_origem`, mas pode cair no mapeamento de proprietário também
@@ -51,7 +51,7 @@ unidecode
 
 1. Execute o aplicativo:
 ```bash
-streamlit run app.py
+streamlit run sepDados.py
 ```
 
 2. No navegador:
